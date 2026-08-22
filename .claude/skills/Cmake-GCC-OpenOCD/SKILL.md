@@ -19,7 +19,10 @@ Create or repair a maintainable CMake build for an STM32 (or other Cortex-M) bar
 ## Workflow
 
 1. **Inventory the project.** Identify the MCU (e.g. STM32F103C8T6), CPU core (`cortex-m3`), density/device macro (`STM32F10X_MD`), startup file, linker script, include directories, and source layout. Read the existing `CMakeLists.txt`, `toolchain.cmake`, `.ld`, and `startup_*.s` if present.
-2. **Check prerequisites.** Verify CMake (≥3.20 for Ninja), Ninja, the Arm GNU toolchain (`arm-none-eabi-gcc`, `objcopy`, `size`, `gdb`), and optionally OpenOCD/pyOCD. Report missing tools without installing them; continue with generation-only mode if the user allows it.
+2. **Check prerequisites (interactive).** Detect CMake (≥3.20 for Ninja), Ninja, the Arm GNU toolchain (`arm-none-eabi-gcc`, `objcopy`, `size`, `gdb`), and optionally OpenOCD/pyOCD on `PATH` and known install locations. For every required tool that is **not detected**, ask the user whether it is already installed:
+   - If the user says **yes, it is installed**: ask for the exact executable or install path, probe that path with a version check, and record it for this project's configuration (e.g. `toolchain.cmake` `COMPILE_ROOT_PATH`, or a `--*-path` argument to the environment checker).
+   - If the user says **no, it is not installed**: do not install it automatically; mark it missing and continue in generation-only mode only if the user explicitly allows it.
+   Re-run the detection with the user-provided paths before configuring the build. Checks are diagnostic only; never install software, modify `PATH`, or change machine-wide state without explicit authorization.
 3. **Write `toolchain.cmake`.** Set `CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY`, configure `CMAKE_C_COMPILER` / `CMAKE_ASM_COMPILER` / `CMAKE_OBJCOPY` / `CMAKE_SIZE` against the installed toolchain, and expose an `option(USE_ARMGCC ...)` switch.
 4. **Write `CMakeLists.txt`** following the 14-step flow:
    - version and policy (`cmake_minimum_required`, `cmake_policy(SET CMP0123 NEW)`)
