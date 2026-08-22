@@ -18,7 +18,7 @@ string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
 if(BUILD_TYPE_UPPER STREQUAL "RELEASE")
     add_compile_options(-Os)
 else()
-    add_compile_options(-Og -g)
+    add_compile_options(-O0 -g)
 endif()
 
 #定义目标芯片型号（STM32F103C8T6 为 Medium-density）并启用标准外设库

@@ -1,0 +1,52 @@
+{
+    // DAP(CMSIS-DAP) 调试配置：cortex-debug 扩展 + pyOCD 调试服务器
+    // 前提：已安装 cortex-debug 扩展；pyOCD 已安装并可识别调试器（pyocd list 可看到 FIRE FireDAP）
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DAP Debug (pyOCD)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "pyocd",
+            // pyOCD 主程序路径（cortex-debug 会以 "pyocd gdbserver --port --telnet-port --target" 方式调用）
+            "serverpath": "C:/Users/30976/AppData/Roaming/Python/Python312/Scripts/pyocd.exe",
+            // 工具链自带 GDB 路径
+            "gdbPath": "E:/Project/Compiler/arm-gnu-toolchain-15.3.rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-gdb.exe",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/output/TEST.elf",
+            // pyOCD 目标：stm32f103c8（STM32F103C8T6 精确匹配，medium-density 1KB 页）
+            // 注意：不要用 stm32f103rc（high-density 2KB 页），否则 Flash 编程会失败
+            "targetId": "stm32f103c8",
+            "runToEntryPoint": "main",
+            "preLaunchTask": "build",
+            "showDevDebugOutput": "none"
+            // 可选增强——外设寄存器查看窗口：把 STM32F103xx.svd 下载到 .vscode 目录后取消下一行注释：
+            // "svdFile": "${workspaceRoot}/.vscode/STM32F103xx.svd"
+        },
+        {
+            "name": "DAP Debug (OpenOCD)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "serverpath": "E:/Project/Compiler/xpack-openocd-0.12.0-7/bin/openocd.exe",
+            // OpenOCD 配置文件搜索目录（scripts）
+            "searchDir": [
+                "E:/Project/Compiler/xpack-openocd-0.12.0-7/openocd/scripts"
+            ],
+            "configFiles": [
+                "interface/cmsis-dap.cfg",
+                "target/stm32f1x.cfg"
+            ],
+            "serverArgs": [
+                "-c",
+                "adapter speed 1000"
+            ],
+            "gdbPath": "E:/Project/Compiler/arm-gnu-toolchain-15.3.rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-gdb.exe",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/output/TEST.elf",
+            "runToEntryPoint": "main",
+            "preLaunchTask": "build",
+            "showDevDebugOutput": "none"
+        }
+    ]
+}
