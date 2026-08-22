@@ -8,12 +8,16 @@
   */
 
 #include "stm32f10x.h"
+#include "stm32f10x_conf.h"
 
 int main(void)
 {
   /* TODO: 在此编写用户应用代码 */
-
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+  
   while (1)
   {
+    
+    
   }
 }
