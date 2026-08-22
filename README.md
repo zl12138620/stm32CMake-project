@@ -35,6 +35,7 @@ STM32_CMake_Test/
 | GNU ARM 工具链 | `arm-none-eabi-gcc`（本项目使用 v15.3） |
 | 构建工具 | Make / Ninja |
 | OpenOCD（可选） | 烧录与调试 |
+| pyOCD（可选） | CMSIS-DAP 调试器烧录与调试 |
 
 > **注意**：`toolchain.cmake` 中的编译器路径 `COMPILE_ROOT_PATH` 需要根据你本机的工具链安装位置修改：
 
@@ -72,13 +73,57 @@ cmake --build build
 
 ## 烧录
 
-使用 OpenOCD 连接 ST-Link / J-Link 烧录固件：
+### 调试器硬件连接
+
+本项目使用 **FIRE FireDAP（CMSIS-DAP）** 调试器，通过 SWD 接口与 STM32F103C8T6 连接：
+
+| FireDAP 引脚 | STM32F103C8T6 |
+| --- | --- |
+| SWDIO | PA13 |
+| SWCLK | PA14 |
+| GND | GND |
+| 3.3V | 3.3V |
+
+连接完成后可用 `pyocd list` 确认调试器被识别（应显示 `FIRE FireDAP CMSIS-DAP`）。
+
+### 方法一：VS Code 一键烧录 + 调试（推荐）
+
+1. 安装 **Cortex-Debug** 扩展
+2. 按 **F5**（或点击"运行和调试"→ 选择 **DAP Debug (pyOCD)**）
+3. 自动执行：编译 → 烧录 → 停在 `main()` 进入调试
+
+### 方法二：pyOCD 命令行烧录
 
 ```bash
-openocd -f interface/stlink.cfg -f target/stm32f1x.cfg -c "program build/output/TEST.hex verify reset exit"
+# 烧录 HEX 文件
+pyocd flash -t stm32f103c8 build/output/TEST.hex
+
+# 烧录 ELF 文件并复位运行
+pyocd flash -t stm32f103c8 build/output/TEST.elf --reset
 ```
 
-（按实际调试器接口和输出文件名调整。）
+辅助命令：
+
+```bash
+pyocd list                        # 查看调试器连接状态
+pyocd reset -t stm32f103c8        # 复位芯片
+pyocd erase -t stm32f103c8 --chip # 整片擦除 Flash
+```
+
+### 方法三：OpenOCD 命令行烧录
+
+```bash
+openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg -c "program build/output/TEST.hex verify reset exit"
+```
+
+### 常见问题
+
+| 现象 | 解决方法 |
+| --- | --- |
+| `Error: No probe found` | 检查 FireDAP 是否插入 USB，运行 `pyocd list` 确认 |
+| `Target not found` | 检查 SWDIO/SWCLK 接线及芯片供电（3.3V） |
+| 烧录的是旧固件 | 先执行 `cmake --build build` 重新编译 |
+| Flash 编程失败 | 确认目标型号为 `stm32f103c8`（不能用 `stm32f103rc`） |
 
 ## 注意事项
 
