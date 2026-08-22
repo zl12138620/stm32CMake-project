@@ -59,7 +59,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-编译完成后，产物（`.hex`、`.bin`、`.map` 等）输出在 `build/ouput/` 目录下。
+编译完成后，产物（`.hex`、`.bin`、`.map` 等）输出在 `build/output/` 目录下。
 
 ### 3. 常用 CMake 选项
 
@@ -75,13 +75,13 @@ cmake --build build
 使用 OpenOCD 连接 ST-Link / J-Link 烧录固件：
 
 ```bash
-openocd -f interface/stlink.cfg -f target/stm32f1x.cfg -c "program build/ouput/TEST.hex verify reset exit"
+openocd -f interface/stlink.cfg -f target/stm32f1x.cfg -c "program build/output/TEST.hex verify reset exit"
 ```
 
 （按实际调试器接口和输出文件名调整。）
 
 ## 注意事项
 
-- 构建目录 `build/`、`ouput/` 及编译产物已被 `.gitignore` 忽略，请勿手动提交。
+- 构建目录 `build/`、`output/` 及编译产物已被 `.gitignore` 忽略，请勿手动提交。
 - 修改 `CMakeLists.txt` 或新增源文件后，建议重新执行配置步骤再编译。
 - 本项目当前仍在开发中，`CMakeLists.txt` 中的构建逻辑可能随开发进度调整。
