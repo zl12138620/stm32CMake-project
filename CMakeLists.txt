@@ -19,7 +19,7 @@ if(${BUILD_TYPE_UPPER} RELEASE)
     add_compile_options(-Os)
 else()
     add_compile_options(-Og -g)
-elseif()
+
 
 
 #2、指定头文件路径和源文件路径
@@ -29,7 +29,7 @@ include_directories(
     ${CMAKE_CURRENT_LIST_DIR}/User
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/inc
 )
-file(GOLB SOURCE_FILE
+file(GLOB SOURCE_FILE
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/src/*.c
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport/*.c
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/*.c
@@ -37,9 +37,9 @@ file(GOLB SOURCE_FILE
 )
 #指定生成文件类型
 set(EXECUTABLE_OUTPUT_PATH &{CMAKE_BINARY_DIR}/ouput)
-set(HEX_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROLJECT_NAME}.hex)
-set(BIN_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROLJECT_NAME}.bin)
-set(MAP_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROLJECT_NAME}.map)
+set(HEX_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROJECT_NAME}.hex)
+set(BIN_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROJECT_NAME}.bin)
+set(MAP_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROJECT_NAME}.map)
 
 
 #3、指定启动文件路径
@@ -56,8 +56,8 @@ if(USE_ARMGCC)
         -fno-common
         -fmessage-length=0
     )
-    #设置链接选项
 
+    #设置链接选项
     add_link_options(
         -Wl,-Map=${MAP_FILE}
         -Wl,--print-memory-usage
@@ -65,5 +65,16 @@ if(USE_ARMGCC)
         -T ${LINKER_SCRIPT}
     )
 
+#最终生成文件
+add_executable(${PROJECT_NAME} ${SOURCE_FILE} ${STARTUP_FILE})
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
+)
 
-
+#添加自定义命名以生成bin、hex、map文件
+if(USE_ARMGCC)
+    add_custom_target(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME} ${HEX_FILE}>
+        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME} ${BIN_FILE}>
+        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}>
+    ) 
