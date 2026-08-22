@@ -1,0 +1,37 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DAP Debug (pyOCD)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "pyocd",
+            "serverpath": "@PYOCD_PATH@",
+            "gdbPath": "@GDB_PATH@",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/output/@PROJECT_NAME@.elf",
+            "targetId": "@PYOCD_TARGET_ID@",
+            "runToEntryPoint": "main",
+            "preLaunchTask": "build",
+            "showDevDebugOutput": "none"
+        },
+        {
+            "name": "DAP Debug (OpenOCD)",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "serverpath": "@OPENOCD_PATH@",
+            "searchDir": ["@OPENOCD_SCRIPTS_DIR@"],
+            "configFiles": [
+                "interface/@PROBE_INTERFACE_CFG@",
+                "target/@TARGET_CFG@"
+            ],
+            "gdbPath": "@GDB_PATH@",
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceRoot}/build/output/@PROJECT_NAME@.elf",
+            "runToEntryPoint": "main",
+            "preLaunchTask": "build",
+            "showDevDebugOutput": "none"
+        }
+    ]
+}
