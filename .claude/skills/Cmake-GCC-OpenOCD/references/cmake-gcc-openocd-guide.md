@@ -77,12 +77,36 @@ endif()
 ```
 注意：正确写法是 `if(BUILD_TYPE_UPPER STREQUAL "RELEASE")`；`elseif()` 空语句是错误写法。
 
-### 6. 芯片宏定义
+### 6. 芯片宏定义（先询问芯片型号，再写宏）
+
 ```cmake
 add_compile_definitions(STM32F10X_MD USE_STDPERIPH_DRIVER)
 ```
+
 - `STM32F10X_MD`：芯片密度宏（LD/MD/HD/XL），**必须与 stm32f10x.h 匹配**，否则报 `#error "Please select first the target..."`。
 - `USE_STDPERIPH_DRIVER`：启用外设库，让 `stm32f10x.h` 自动包含 `stm32f10x_conf.h`（否则 `assert_param` 未定义）。
+
+**自动选择宏的流程（必须执行）：**
+
+1. **先询问用户芯片完整型号**，例如 `STM32F103C8T6`。不要凭猜测或默认值写入宏。
+2. 把型号换算成密度宏并**向用户复述确认**，再写入 `add_compile_definitions`。
+
+型号解读示例（`STM32F103C8T6`）：`103`=主流 F1 系列；`C`=48 引脚；`8`=Flash 64KB（密度关键字母）；`T`=LQFP 封装。密度字母对照：`4`=16KB、`6`=32KB、`8`=64KB、`B`=128KB、`C`=256KB、`D`=384KB、`E`=512KB、`F`=768KB、`G`=1024KB。
+
+**STM32F10x 常见型号速查表：**
+
+| 芯片型号（示例） | 密度 / 产品线 | 设备宏 |
+| --- | --- | --- |
+| STM32F101/102/103x4、x6 | 低密度（16–32KB） | `STM32F10X_LD` |
+| STM32F101/102/103x8、xB（C8T6、CBT6、R8T6、T8U6…） | 中等密度（64–128KB） | `STM32F10X_MD` |
+| STM32F101/103xC、xD、xE（RCT6、RET6、VET6、ZET6…） | 高密度（256–512KB） | `STM32F10X_HD` |
+| STM32F101/103xF、xG | XL 超高密度（512–1024KB） | `STM32F10X_XL` |
+| STM32F105xx、STM32F107xx（R8T6、RBT6、VCT6…） | 互联型 | `STM32F10X_CL` |
+| STM32F100x4、x6 | 值线低密度（16–32KB） | `STM32F10X_LD_VL` |
+| STM32F100x8、xB（C8T6、RBT6…） | 值线中等密度（64–128KB） | `STM32F10X_MD_VL` |
+| STM32F100xC、xD、xE | 值线高密度（256–512KB） | `STM32F10X_HD_VL` |
+
+> 非 F1 系列（F0/F3/F4/F7/H7/L1/L4 等）：询问用户工程使用的 CMSIS 头文件期望的宏（如 `STM32F407xx`、`STM32F0XX`、`USE_HAL_DRIVER`），不要自行编造。
 
 ### 7. 头文件路径
 ```cmake

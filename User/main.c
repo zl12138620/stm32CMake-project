@@ -8,7 +8,7 @@
   */
 
 #include "stm32f10x.h"
-#include "stm32f10x_conf.h"
+
 
 int main(void)
 {
@@ -40,6 +40,8 @@ int main(void)
   NVIC_InitStruct.NVIC_IRQChannelSubPriority = 1;
   NVIC_Init(&NVIC_InitStruct);
 
+
+  
   // RCC->APB2ENR = 0x00000004;
   // GPIOA->CRL = 0x00200000;
   // GPIOA->ODR = 0x00000020;
