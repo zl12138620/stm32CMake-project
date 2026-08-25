@@ -24,6 +24,10 @@ endif()
 #定义目标芯片型号（STM32F103C8T6 为 Medium-density）并启用标准外设库
 add_compile_definitions(STM32F10X_MD USE_STDPERIPH_DRIVER)
 
+#导出编译命令（compile_commands.json），让 VS Code C/C++ 扩展的 IntelliSense
+#能拿到芯片型号宏/外设库宏和头文件路径，消除误报的“未定义标识符”红色波浪线
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 #2、指定头文件路径和源文件路径
 include_directories(
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport

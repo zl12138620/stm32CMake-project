@@ -4,8 +4,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "Cmake",
-            "args": ["--build", "build"],
+            "command": "cmake --preset ninja; if ($LASTEXITCODE -eq 0) { cmake --build --preset debug }",
             "options": {
                 "cwd": "${workspaceRoot}"
             },

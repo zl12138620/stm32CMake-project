@@ -20,6 +20,7 @@ int main(void)
   gpio_test.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOA, &gpio_test);
 
+  
   //配置AFIO时钟，用于启动中断
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
   GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource5);
@@ -33,7 +34,7 @@ int main(void)
   //优先级分组
   NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
   NVIC_InitTypeDef NVIC_InitStruct;
-  NVIC_InitStruct.NVIC_IRQChannel = EXTI4_IRQn;
+  NVIC_InitStruct.NVIC_IRQChannel = EXTI9_5_IRQn;
   NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
   NVIC_InitStruct.NVIC_IRQChannelPreemptionPriority = 1;
   NVIC_InitStruct.NVIC_IRQChannelSubPriority = 1;

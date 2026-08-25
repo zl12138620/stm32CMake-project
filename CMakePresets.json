@@ -1,0 +1,28 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "ninja",
+            "displayName": "Ninja + ARM GCC",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "toolchainFile": "${sourceDir}/toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_MAKE_PROGRAM": "E:/Project/Compiler/ninja/ninja.exe",
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "displayName": "Debug build",
+            "configurePreset": "ninja"
+        }
+    ]
+}
