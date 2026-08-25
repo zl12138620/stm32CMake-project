@@ -14,10 +14,12 @@
             "searchDir": [
                 "E:/Project/Compiler/xpack-openocd-0.12.0-7/openocd/scripts"
             ],
+            // 用 configFiles 传 *.cfg，cortex-debug 会自动为每个文件生成 -f 参数（等价 openocd -f ... -f ...）
             "configFiles": [
                 "interface/cmsis-dap.cfg",
                 "target/stm32f1x.cfg"
             ],
+            // serverArgs 仅用于非 -f 的附加参数（如 -c 命令）；-f 必须经 configFiles 传入，不要在 serverArgs 里传 -f（不稳定）
             "serverArgs": [
                 "-c",
                 "adapter speed 1000"

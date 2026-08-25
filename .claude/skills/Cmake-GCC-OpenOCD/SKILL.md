@@ -46,7 +46,10 @@ Create or repair a maintainable CMake build for an STM32 (or other Cortex-M) bar
 6. **Configure and build.** From a fresh build dir: `cmake -S . -B build -G Ninja` (explicit generator on Windows), then `cmake --build build`. Fix compile/link errors; do not suppress warnings globally.
 7. **Verify artifacts.** Confirm `.elf`, `.hex`, `.bin`, and `.map` exist under `build/output/` and that the POST_BUILD objcopy/size steps ran.
 
-8. **Set up debugging.** Generate `.vscode/tasks.json` (build task) and `.vscode/launch.json` with `cortex-debug` configurations for pyOCD (`servertype: "pyocd"`, exact `targetId` such as `stm32f103c8`) and/or OpenOCD (`servertype: "openocd"`, `interface/*.cfg` + `target/*.cfg`). Ensure `executable` points at the built `.elf`.
+8. **Set up debugging.** Generate `.vscode/tasks.json` (build task) and `.vscode/launch.json` with `cortex-debug` configurations for pyOCD (`servertype: "pyocd"`, exact `targetId` such as `stm32f103c8`) and/or OpenOCD (`servertype: "openocd"`, `interface/*.cfg` + `target/*.cfg`). Ensure `executable` points at the built `.elf`. For OpenOCD:
+   - Pass the config scripts **only** through the `configFiles` array — cortex-debug automatically turns each entry into a `-f` argument, so `configFiles: ["interface/cmsis-dap.cfg", "target/stm32f1x.cfg"]` is equivalent to `openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg`.
+   - **Never** pass `-f` flags via `serverArgs` — that is an unstable usage (argument ordering vs. the built-in `-f`/`-s` is not guaranteed, so config loading can fail or behave erratically). Reserve `serverArgs` for extra non-`-f` options such as `"-c", "adapter speed 1000"`.
+   - Always set `searchDir` **explicitly** to the OpenOCD `scripts` directory. xPack OpenOCD uses a non-standard layout (`openocd/scripts` instead of `share/openocd/scripts`), so cortex-debug cannot infer the search path on its own; omitting `searchDir` fails with `Can't find interface/*.cfg`.
 9. **Flash and debug.** Use `pyocd flash -t <target> build/output/<name>.hex --reset` or `openocd -f interface/<probe>.cfg -f target/<chip>.cfg -c "program build/output/<name>.hex verify reset exit"`. For VS Code, press F5 to build, flash, and halt at `main`.
 10. **Document.** Produce or update a concise bilingual build-and-debug guide in the project root (e.g. `README.md`) with exact commands, artifact paths, SWD wiring, and a troubleshooting table.
 
@@ -78,6 +81,7 @@ Resolve the MCU part number the user provides to the device macro expected by th
 - Fix old-CMSIS inline asm register conflicts (e.g. `strexb r0, r0, [r1]`) by upgrading CMSIS or switching output constraints to `"=&r"` plus `"memory"`.
 - Preserve existing application code and the IDE project unless the user explicitly requests changes. Keep fixes small and explain them.
 - Do not add `NDEBUG` unless it matches the intended release behavior.
+- For `cortex-debug` with `servertype: "openocd"`, pass `*.cfg` files via `configFiles` (each entry becomes a `-f` argument) and set `searchDir` to the OpenOCD `scripts` directory. Never pass `-f` through `serverArgs` (unstable). Remember that xPack OpenOCD keeps scripts in `openocd/scripts`, not `share/openocd/scripts`, so `searchDir` must be explicit.
 
 ## Required Validation
 

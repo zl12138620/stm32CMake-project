@@ -292,6 +292,13 @@ python check_build_env.py                           # 环境诊断
 }
 ```
 
+⚠️ **OpenOCD 配置文件的正确传参方式（重要）：**
+- ✅ 用 `configFiles` 数组传 `*.cfg`，cortex-debug 会为每个文件**自动生成一个 `-f` 参数**，等价于命令行 `openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg`。
+- ❌ **不要**把 `-f` 写进 `serverArgs`（如 `"serverArgs": ["-f", "interface/cmsis-dap.cfg", ...]`）。cortex-debug 不保证 `serverArgs` 中参数与它自动拼接的 `-f`/`-s` 参数之间的顺序，这是**不稳定用法**，可能导致配置加载失败或行为异常。
+- `serverArgs` 只适合传非 `-f` 的附加选项，例如 `"-c", "adapter speed 1000"`。
+- `searchDir` 必须**显式指定**：xPack 版 OpenOCD 是特殊目录布局，脚本位于 `openocd/scripts`，不是标准安装的 `share/openocd/scripts`，cortex-debug **无法自动推断**搜索路径。不设 `searchDir` 会报 `Can't find interface/xxx.cfg`。
+- 若旧配置把 `-f` 写在了 `serverArgs`，请迁移到 `configFiles`。
+
 ### 5. 命令行烧录
 ```bash
 pyocd flash -t stm32f103c8 build/output/TEST.hex --reset
@@ -337,4 +344,5 @@ openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg \
 | `LOAD segment with RWX permissions` | 链接警告，可忽略 |
 | `No probe found` | 调试器未连接，`pyocd list` 检查 |
 | `Target not found` | SWD 接线错误或芯片未供电 |
+| `Can't find interface/cmsis-dap.cfg` | OpenOCD 脚本路径未找到：用 `configFiles` 传 `*.cfg`，并显式设置 `searchDir` 指向 scripts（xPack 为 `openocd/scripts`）；不要在 `serverArgs` 里传 `-f` |
 
