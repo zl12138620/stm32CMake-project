@@ -17,24 +17,24 @@
             "type": "cortex-debug",
             "request": "launch",
             "servertype": "openocd",
-            "serverpath": "E:/Project/Compiler/xpack-openocd-0.12.0-7/bin/openocd.exe",
+            "serverpath": "@OPENOCD_PATH@",
             // OpenOCD 配置文件搜索目录（scripts）—— 必须显式指定（xPack 特殊布局）
             "searchDir": [
-                "E:/Project/Compiler/xpack-openocd-0.12.0-7/openocd/scripts"
+                "@OPENOCD_SCRIPTS_DIR@"
             ],
             // 用 configFiles 传 *.cfg（cortex-debug 自动为每个文件生成 -f 参数）
             "configFiles": [
-                "interface/cmsis-dap.cfg",
-                "target/stm32f1x.cfg"
+                "@PROBE_INTERFACE_CFG@",
+                "@TARGET_CFG@"
             ],
             // serverArgs 仅用于非 -f 的附加参数；-f 必须经 configFiles 传入
             "serverArgs": [
                 "-c",
                 "adapter speed 1000"
             ],
-            "gdbPath": "E:/Project/Compiler/arm-gnu-toolchain-15.3.rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-gdb.exe",
+            "gdbPath": "@GDB_PATH@",
             "cwd": "${workspaceRoot}",
-            "executable": "${workspaceRoot}/build/output/TEST.elf",
+            "executable": "${workspaceRoot}/build/output/@PROJECT_NAME@.elf",
             "runToEntryPoint": "main",
             "preLaunchTask": "build",
             "showDevDebugOutput": "none"

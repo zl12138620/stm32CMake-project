@@ -87,3 +87,43 @@ if(USE_ARMGCC)
         COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}>
     )
 endif()
+
+# =============================================================================
+# 4、生成 VS Code 调试配置（.vscode/launch.json + tasks.json）
+# -----------------------------------------------------------------------------
+# cortex-debug + OpenOCD 配置规则（重要）：
+#   * *.cfg 一律通过 configFiles 数组传入 —— cortex-debug 会自动为每个文件
+#     生成一个 -f 参数（configFiles: [...] ≡ openocd -f ... -f ...）
+#   * 禁止在 serverArgs 里传 -f：cortex-debug 不保证 serverArgs 与内置参数
+#     的拼接顺序，属不稳定用法；serverArgs 只用于 -c 等非 -f 附加参数
+#   * searchDir 必须显式指定：xPack OpenOCD 脚本位于 openocd/scripts
+#     （非标准 share/openocd/scripts），cortex-debug 无法自动推断
+# =============================================================================
+option(VSCODE_REGENERATE_DEBUG_CONFIG "每次 configure 重新生成 .vscode/launch.json 与 tasks.json" ON)
+
+if(VSCODE_REGENERATE_DEBUG_CONFIG)
+    # 本机调试工具路径 —— 修改后重新执行 cmake 配置即可自动更新 launch.json
+    set(OPENOCD_PATH
+        "E:/Project/Compiler/xpack-openocd-0.12.0-7/bin/openocd.exe"
+        CACHE STRING "OpenOCD 可执行文件路径")
+    set(OPENOCD_SCRIPTS_DIR
+        "E:/Project/Compiler/xpack-openocd-0.12.0-7/openocd/scripts"
+        CACHE STRING "OpenOCD scripts 目录（xPack 布局为 openocd/scripts，非 share/openocd/scripts）")
+    set(GDB_PATH
+        "E:/Project/Compiler/arm-gnu-toolchain-15.3.rel1-mingw-w64-i686-arm-none-eabi/bin/arm-none-eabi-gdb.exe"
+        CACHE STRING "arm-none-eabi-gdb 可执行文件路径")
+    set(PROBE_INTERFACE_CFG "interface/cmsis-dap.cfg" CACHE STRING "调试器接口配置（stlink.cfg / jlink.cfg / cmsis-dap.cfg）")
+    set(TARGET_CFG "target/stm32f1x.cfg" CACHE STRING "目标芯片 OpenOCD 配置")
+    set(CMAKE_PRESET_CONFIG_NAME "ninja" CACHE STRING "configure preset 名称（见 CMakePresets.json）")
+    set(CMAKE_PRESET_BUILD_NAME "debug" CACHE STRING "build preset 名称（见 CMakePresets.json）")
+
+    configure_file(
+        ${CMAKE_CURRENT_LIST_DIR}/cmake/launch.json.in
+        ${CMAKE_CURRENT_LIST_DIR}/.vscode/launch.json
+        @ONLY)   # @ONLY：仅替换 @VAR@，保留 ${workspaceRoot} 等 VS Code 变量
+    configure_file(
+        ${CMAKE_CURRENT_LIST_DIR}/cmake/tasks.json.in
+        ${CMAKE_CURRENT_LIST_DIR}/.vscode/tasks.json
+        @ONLY)
+    message(STATUS "已生成 .vscode/launch.json / tasks.json（OpenOCD 使用 configFiles + searchDir，未用 serverArgs 传 -f）")
+endif()

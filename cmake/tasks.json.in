@@ -5,7 +5,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "cmake --preset ninja; if ($LASTEXITCODE -eq 0) { cmake --build --preset debug }",
+            "command": "cmake --preset @CMAKE_PRESET_CONFIG_NAME@; if ($LASTEXITCODE -eq 0) { cmake --build --preset @CMAKE_PRESET_BUILD_NAME@ }",
             "options": {
                 "cwd": "${workspaceRoot}"
             },

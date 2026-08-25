@@ -1,4 +1,15 @@
 {
+    // 本文件是 cortex-debug 调试配置模板：可直接用 CMake configure_file(@ONLY) 渲染为 .vscode/launch.json。
+    // @ONLY 模式下 ${workspaceRoot} 等 VS Code 变量会原样保留，只有 @...@ 会被替换。
+    //
+    // cortex-debug + OpenOCD 配置规则（重要）：
+    //   1) *.cfg 一律通过 configFiles 数组传入，cortex-debug 会自动为每个文件生成一个 -f 参数
+    //      （configFiles: ["interface/cmsis-dap.cfg", "target/stm32f1x.cfg"]
+    //       ≡ openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg）。
+    //   2) 禁止在 serverArgs 里传 -f：cortex-debug 不保证参数拼接顺序，属不稳定用法；
+    //      serverArgs 只用于非 -f 的附加参数，如 -c "adapter speed 1000"。
+    //   3) searchDir 必须显式指定：xPack OpenOCD 脚本位于 openocd/scripts
+    //      （非标准 share/openocd/scripts），cortex-debug 无法自动推断。
     "version": "0.2.0",
     "configurations": [
         {
@@ -21,12 +32,19 @@
             "request": "launch",
             "servertype": "openocd",
             "serverpath": "@OPENOCD_PATH@",
-            // 显式指定 scripts 目录：xPack OpenOCD 布局为 openocd/scripts（非标准 share/openocd/scripts），cortex-debug 无法自动推断
-            "searchDir": ["@OPENOCD_SCRIPTS_DIR@"],
-            // 用 configFiles 传 *.cfg（cortex-debug 自动为每个文件生成 -f）；切勿在 serverArgs 里传 -f，那是不稳定用法
+            // OpenOCD 配置文件搜索目录（scripts）—— 必须显式指定（xPack 布局为 openocd/scripts，非 share/openocd/scripts）
+            "searchDir": [
+                "@OPENOCD_SCRIPTS_DIR@"
+            ],
+            // 用 configFiles 传 *.cfg（cortex-debug 自动为每个文件生成 -f 参数）
             "configFiles": [
-                "interface/@PROBE_INTERFACE_CFG@",
-                "target/@TARGET_CFG@"
+                "@PROBE_INTERFACE_CFG@",
+                "@TARGET_CFG@"
+            ],
+            // serverArgs 仅用于非 -f 的附加参数；-f 必须经 configFiles 传入
+            "serverArgs": [
+                "-c",
+                "adapter speed 1000"
             ],
             "gdbPath": "@GDB_PATH@",
             "cwd": "${workspaceRoot}",

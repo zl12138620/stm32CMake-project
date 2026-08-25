@@ -497,6 +497,14 @@ OpenOCD 方案（通用，ST-Link/J-Link 也可用）：
 }
 ```
 
+> ⚠️ **OpenOCD 配置的正确传参方式（重要）：**
+>
+> - ✅ `*.cfg` 一律通过 **`configFiles`** 数组传入，cortex-debug 会自动为每个文件生成一个 `-f` 参数（等价于 `openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg`）。
+> - ❌ **不要**把 `-f` 写进 `serverArgs`——cortex-debug 不保证参数拼接顺序，属**不稳定用法**，可能导致配置加载失败或行为异常；`serverArgs` 只用于非 `-f` 的附加参数，如 `"-c", "adapter speed 1000"`。
+> - **`searchDir` 必须显式指定**：xPack 版 OpenOCD 脚本位于 `openocd/scripts`（非标准 `share/openocd/scripts`），cortex-debug **无法自动推断**搜索路径，不设会报 `Can't find interface/xxx.cfg`。
+>
+> ℹ️ 本工程的 `.vscode/launch.json` 与 `tasks.json` 由 CMake 配置阶段自动生成（模板 `cmake/launch.json.in` / `cmake/tasks.json.in`）。修改调试路径请编辑 `CMakeLists.txt` 中的 `OPENOCD_PATH`、`OPENOCD_SCRIPTS_DIR`、`GDB_PATH` 等变量后重新执行 `cmake --preset ninja`。
+
 ### 4. 命令行烧录
 
 ```bash
@@ -537,6 +545,7 @@ openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg \
 - [ ] **语言**：`project(... C ASM)` 包含 `ASM`
 - [ ] **生成器**：Windows 下用 `cmake -S . -B build -G Ninja`
 - [ ] **调试目标**：launch.json 的 `targetId` / OpenOCD 的 `target/xxx.cfg` 与芯片一致
+- [ ] **调试配置写法**：OpenOCD 用 `configFiles` 传 `*.cfg` + 显式 `searchDir`（xPack 为 `openocd/scripts`），不要用 `serverArgs` 传 `-f`
 
 ---
 
@@ -555,6 +564,7 @@ openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg \
 | `LOAD segment with RWX permissions` | 链接警告，可忽略（不影响烧录） |
 | 烧录 `No probe found` | 调试器未连接 / USB 线问题，`pyocd list` 检查 |
 | 烧录 `Target not found` | SWD 接线错误或芯片未供电 |
+| `Can't find interface/cmsis-dap.cfg` | OpenOCD 脚本路径未找到：用 `configFiles` 传 `*.cfg` 并显式 `searchDir` 指向 scripts（xPack 为 `openocd/scripts`）；不要在 `serverArgs` 里传 `-f` |
 
 
 
