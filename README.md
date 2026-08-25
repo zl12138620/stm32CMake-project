@@ -158,6 +158,88 @@ add_compile_definitions(STM32F10X_MD USE_STDPERIPH_DRIVER)
   - 常用对照：LD=低密度、MD=中等密度(C8/CB)、HD=高密度(ZE/VC)、XL=超密度。
 - `USE_STDPERIPH_DRIVER`：启用标准外设库，让 `stm32f10x.h` 自动包含 `stm32f10x_conf.h`（否则报 `assert_param` 未定义）。
 
+#### 深入：`USE_STDPERIPH_DRIVER` 宏的完整引入指南
+
+**1. 这个宏到底是干什么的？**
+
+`stm32f10x.h` 的最后（约第 8341 行）有一段条件编译：
+
+```c
+#ifdef USE_STDPERIPH_DRIVER
+  #include "stm32f10x_conf.h"   // 只有定义了 USE_STDPERIPH_DRIVER，才会自动包含外设库配置文件
+#endif
+```
+
+注意：`USE_STDPERIPH_DRIVER` 本身**不会在 `stm32f10x.h` 里被定义**（该文件第 104 行默认是注释状态 `/*#define USE_STDPERIPH_DRIVER*/`），它只能由外部传入。定义后：
+
+- `stm32f10x.h` 自动包含 `stm32f10x_conf.h` → 再包含全部外设头文件（GPIO / RCC / EXTI / NVIC...）；
+- 外设库源码里的 `assert_param()` 才有定义，否则报 `implicit declaration of 'assert_param'`。
+
+**2. 三种引入方式对比**
+
+| 方式 | 写法 | 优缺点 |
+| --- | --- | --- |
+| ① **CMake 编译器宏**（推荐） | `add_compile_definitions(STM32F10X_MD USE_STDPERIPH_DRIVER)` | 全局生效、可随构建类型切换；等价于每个文件编译时加 `-D` 参数 |
+| ② 改库文件 | 取消 `stm32f10x.h` 第 104 行注释：`#define USE_STDPERIPH_DRIVER` | ❌ 不推荐：污染库文件；工程里可能有多份 `stm32f10x.h` 拷贝，容易漏改 |
+| ③ 源码里 define | 在 `#include "stm32f10x.h"` **之前**写 `#define USE_STDPERIPH_DRIVER` | 可行但每个用到外设库的 `.c` 都得写，繁琐易漏 |
+
+**3. 推荐做法（本项目采用）与验证**
+
+```cmake
+# CMakeLists.txt —— 宏对 add_executable 收集的所有源文件生效
+add_compile_definitions(STM32F10X_MD USE_STDPERIPH_DRIVER)
+```
+
+编译时等价于给每个文件加参数：
+
+```bash
+arm-none-eabi-gcc ... -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER ... main.c
+```
+
+验证宏是否真的传给了编译器（两种方法任选）：
+
+```bash
+# 方法一：看 build.ninja 里的 DEFINES（无需额外配置）
+Select-String -Path build/build.ninja -Pattern 'DEFINES' | Select-Object -First 1
+# 输出应为：DEFINES = -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER
+
+# 方法二：看 compile_commands.json（需先在 CMakeLists.txt 加 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)）
+Select-String -Path build/compile_commands.json -Pattern 'USE_STDPERIPH_DRIVER'
+```
+
+**4. 编译过了 ≠ 编辑器不报错（IntelliSense 排查）**
+
+如果 `cmake --build` 编译通过，但 VS Code 里 `EXTI9_5_IRQn`、`assert_param` 等仍划红色波浪线——**那是编辑器智能感知没拿到宏，不是编译错误**。因为 `EXTI9_5_IRQn` 定义在 `stm32f10x.h` 的 `#ifdef STM32F10X_MD` 块内（约第 246~252 行），宏缺失时整个枚举被预处理器剔除。
+
+解决（任选其一，建议都做）：
+
+```cmake
+# ① CMakeLists.txt 开启导出编译命令，重新 cmake 配置后
+#    VS Code C/C++ 扩展会自动读取 build/compile_commands.json
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+```
+
+```jsonc
+// ② 或手动创建 .vscode/c_cpp_properties.json，在 defines 里补上宏
+{
+    "configurations": [{
+        "name": "STM32",
+        "defines": ["STM32F10X_MD", "USE_STDPERIPH_DRIVER"]
+        // ... 还要配 includePath，见步骤⑦
+    }]
+}
+```
+
+改完按 `Ctrl+Shift+P` → `C/C++: Reset IntelliSense Database` 重载即可。
+
+**5. 相关报错速查**
+
+| 现象 | 原因 |
+| --- | --- |
+| `#error "Please select first the target STM32F10x device..."` | 没定义芯片型号宏（`STM32F10X_MD`） |
+| `implicit declaration of 'assert_param'` | 没加 `USE_STDPERIPH_DRIVER` 宏 |
+| 编译通过但编辑器红色波浪线 `EXTI9_5_IRQn` | IntelliSense 缺宏（见第 4 点） |
+
 ### 步骤 ⑦ 头文件路径
 
 ```cmake
