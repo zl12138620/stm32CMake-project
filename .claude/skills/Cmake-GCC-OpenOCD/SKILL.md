@@ -33,13 +33,13 @@ Create or repair a maintainable CMake build for an STM32 (or other Cortex-M) bar
    - target platform (`CMAKE_SYSTEM_NAME Generic`, `CPU_CORE`, `CMAKE_SYSTEM_PROCESSOR`)
    - toolchain file (`set(CMAKE_TOOLCHAIN_FILE ...)`)
    - `project(<name> C ASM)` — **must** include `ASM`
-   - build type (`if(BUILD_TYPE_UPPER STREQUAL "RELEASE")` → `-Os`, else `-O0 -g`)
-   - device macros — **use the macro resolved in step 2**, e.g. `add_compile_definitions(STM32F10X_MD USE_STDPERIPH_DRIVER)` (replace `STM32F10X_MD` with the resolved device macro; keep `USE_STDPERIPH_DRIVER` for StdPeriph projects, or use the HAL macro the user confirms)
-   - include dirs covering every header folder (CoreSupport, DeviceSupport/<chip>, StdPeriph `inc`, `User`)
-   - source collection with `file(GLOB ...)` for `.c` files
+   - build type (`if(BUILD_TYPE_UPPER STREQUAL "RELEASE")` → `-Os`, else `-O0 -g`; add `-Wall -Wextra` for all builds)
+   - device macros — **use the macro resolved in step 2** via `target_compile_definitions(<target> PRIVATE STM32F10X_MD USE_STDPERIPH_DRIVER)` declared **after** `add_executable` (target-scoped, not the global `add_compile_definitions`; keep `USE_STDPERIPH_DRIVER` for StdPeriph projects, or use the HAL macro the user confirms)
+   - include dirs — `target_include_directories(<target> PRIVATE ...)` covering every header folder (CoreSupport, DeviceSupport/<chip>, StdPeriph `inc`, `User`), declared **after** `add_executable`
+   - source collection with `file(GLOB SOURCE_FILE CONFIGURE_DEPENDS ...)` for `.c` files (CONFIGURE_DEPENDS lets Ninja pick up added files without a manual re-configure)
    - output path and artifact names (`${CMAKE_BINARY_DIR}/output`, `.hex/.bin/.map`)
    - startup file and linker script selected per chip density
-   - compile options (`-mcpu=${CPU_CORE} -mthumb -ffunction-sections -fdata-sections ...`)
+   - compile options (`-mcpu=${CPU_CORE} -mthumb -ffunction-sections -fdata-sections -Wall -Wextra ...`)
    - link options (`-Wl,-Map=... --print-memory-usage --gc-sections -T <script>`)
    - `add_executable()` plus `set_target_properties(RUNTIME_OUTPUT_DIRECTORY / OUTPUT_NAME .elf)`
    - `add_custom_command(TARGET ... POST_BUILD ...)` using `CMAKE_OBJCOPY`/`CMAKE_SIZE` to emit `.hex`, `.bin`, and size report

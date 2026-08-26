@@ -26,19 +26,9 @@ else()
     add_compile_options(-O0 -g)
 endif()
 
-# --- 芯片宏定义（示例为 STM32F10X 中等密度 + 标准外设库）---
-add_compile_definitions(@DEVICE_MACRO@ @LIBRARY_MACRO@)
-
-# --- 头文件路径：覆盖所有用到的头文件目录 ---
-include_directories(
-    ${CMAKE_CURRENT_LIST_DIR}/@CORE_DIR@            # CMSIS 内核支持（core_cm3.h 等）
-    ${CMAKE_CURRENT_LIST_DIR}/@DEVICE_DIR@          # 设备支持（stm32f10x.h 等）
-    ${CMAKE_CURRENT_LIST_DIR}/@USER_DIR@            # 用户代码
-    ${CMAKE_CURRENT_LIST_DIR}/@PERIPH_INC_DIR@      # 外设库头文件
-)
-
-# --- 源文件收集 ---
-file(GLOB SOURCE_FILE
+# --- 芯片宏定义与头文件路径：改用 target_* 并移到 add_executable 之后（见文件尾部）---
+# --- 源文件收集（CONFIGURE_DEPENDS：新增 .c 后 Ninja 自动感知）---
+file(GLOB SOURCE_FILE CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_LIST_DIR}/@PERIPH_SRC_DIR@/*.c
     ${CMAKE_CURRENT_LIST_DIR}/@CORE_DIR@/*.c
     ${CMAKE_CURRENT_LIST_DIR}/@DEVICE_DIR@/*.c
@@ -53,10 +43,10 @@ set(MAP_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROJECT_NAME}.map)
 
 # --- 启动文件与链接脚本（按芯片密度/型号选择）---
 if(USE_ARMGCC)
-    SET(STARTUP_FILE ${CMAKE_CURRENT_LIST_DIR}/@STARTUP_DIR@/startup_@STARTUP_NAME@.s)
-    SET(LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/@STARTUP_DIR@/@LINKER_SCRIPT@.ld)
+    set(STARTUP_FILE ${CMAKE_CURRENT_LIST_DIR}/@STARTUP_DIR@/startup_@STARTUP_NAME@.s)
+    set(LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/@STARTUP_DIR@/@LINKER_SCRIPT@.ld)
 
-    # --- 编译选项 ---
+    # --- 编译选项（-Wall -Wextra：所有构建类型都开警告）---
     add_compile_options(
         -mcpu=${CPU_CORE}
         -mthumb
@@ -65,6 +55,7 @@ if(USE_ARMGCC)
         -fno-common
         -fmessage-length=0
     )
+    add_compile_options(-Wall -Wextra)
 
     # --- 链接选项 ---
     add_link_options(
@@ -77,6 +68,19 @@ endif()
 
 # --- 生成可执行目标 ---
 add_executable(${PROJECT_NAME} ${SOURCE_FILE} ${STARTUP_FILE})
+
+# 芯片宏定义（@DEVICE_MACRO@ 由询问芯片型号得到，@LIBRARY_MACRO@ 常用 USE_STDPERIPH_DRIVER）
+# 目标作用域：只影响本目标，不污染其他目标（优于全局 add_compile_definitions）
+target_compile_definitions(${PROJECT_NAME} PRIVATE @DEVICE_MACRO@ @LIBRARY_MACRO@)
+
+# 头文件路径：覆盖所有用到的头文件目录（目标作用域，优于全局 include_directories）
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/@CORE_DIR@            # CMSIS 内核支持（core_cm3.h 等）
+    ${CMAKE_CURRENT_LIST_DIR}/@DEVICE_DIR@          # 设备支持（stm32f10x.h 等）
+    ${CMAKE_CURRENT_LIST_DIR}/@USER_DIR@            # 用户代码
+    ${CMAKE_CURRENT_LIST_DIR}/@PERIPH_INC_DIR@      # 外设库头文件
+)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
     OUTPUT_NAME ${PROJECT_NAME}.elf
