@@ -21,22 +21,16 @@ else()
     add_compile_options(-O0 -g)
 endif()
 
-#定义目标芯片型号（STM32F103C8T6 为 Medium-density）并启用标准外设库
-add_compile_definitions(STM32F10X_MD USE_STDPERIPH_DRIVER)
+#对所有构建类型生效的警告选项（帮助提前发现空循环被优化、未用变量等问题）
+add_compile_options(-Wall -Wextra)
 
 #导出编译命令（compile_commands.json），让 VS Code C/C++ 扩展的 IntelliSense
 #能拿到芯片型号宏/外设库宏和头文件路径，消除误报的“未定义标识符”红色波浪线
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-#2、指定头文件路径和源文件路径
-include_directories(
-    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport
-    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport
-    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x
-    ${CMAKE_CURRENT_LIST_DIR}/User
-    ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/inc
-)
-file(GLOB SOURCE_FILE
+#2、收集源文件（芯片宏和头文件路径改在 add_executable 后用 target_* 指定，作用域更清晰）
+#CONFIGURE_DEPENDS：新增 .c 文件后 Ninja 增量构建自动感知，无需手动重新配置
+file(GLOB SOURCE_FILE CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/src/*.c
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport/*.c
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/*.c
@@ -51,8 +45,8 @@ set(MAP_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROJECT_NAME}.map)
 
 #3、指定启动文件路径
 if(USE_ARMGCC)
-    SET(STARTUP_FILE ${CMAKE_CURRENT_LIST_DIR}/Startup/startup_stm32f10x_md.s)
-    SET(LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/Startup/STM32F103C8Tx_FLASH.ld)
+    set(STARTUP_FILE ${CMAKE_CURRENT_LIST_DIR}/Startup/startup_stm32f10x_md.s)
+    set(LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/Startup/STM32F103C8Tx_FLASH.ld)
 
     add_compile_options(
         -mcpu=${CPU_CORE}
@@ -74,6 +68,19 @@ endif()
 
 #最终生成文件
 add_executable(${PROJECT_NAME} ${SOURCE_FILE} ${STARTUP_FILE})
+
+#目标作用域：芯片型号宏 + 启用标准外设库（STM32F103C8T6 为 Medium-density）
+target_compile_definitions(${PROJECT_NAME} PRIVATE STM32F10X_MD USE_STDPERIPH_DRIVER)
+
+#目标作用域：头文件搜索路径
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x
+    ${CMAKE_CURRENT_LIST_DIR}/User
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/inc
+)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
     OUTPUT_NAME ${PROJECT_NAME}.elf

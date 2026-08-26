@@ -31,6 +31,7 @@
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+volatile uint8_t KEY_Pressed_Flag = 0;   // 按键中断标志：ISR 置位，main 主循环清零
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
@@ -141,6 +142,22 @@ void SysTick_Handler(void)
 /*  available peripheral interrupt handler's name please refer to the startup */
 /*  file (startup_stm32f10x_xx.s).                                            */
 /******************************************************************************/
+
+/**
+  * @brief  PA5 按键外部中断（EXTI Line5，属 EXTI9_5_IRQn）
+  *         只做两件事：清除中断挂起位 + 置位 KEY_Pressed_Flag；
+  *         消抖与 PWM 档位切换由 main.c 主循环完成，避免在 ISR 中忙等待。
+  * @param  None
+  * @retval None
+  */
+void EXTI9_5_IRQHandler(void)
+{
+    if (EXTI_GetITStatus(EXTI_Line5) != RESET)
+    {
+        EXTI_ClearITPendingBit(EXTI_Line5);
+        KEY_Pressed_Flag = 1;
+    }
+}
 
 /**
   * @brief  This function handles PPP interrupt request.

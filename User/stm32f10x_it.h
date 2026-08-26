@@ -32,6 +32,9 @@
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
+/* Exported variables ------------------------------------------------------- */
+extern volatile uint8_t KEY_Pressed_Flag;
+
 /* Exported functions ------------------------------------------------------- */
 
 void NMI_Handler(void);
@@ -43,6 +46,7 @@ void SVC_Handler(void);
 void DebugMon_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
+void EXTI9_5_IRQHandler(void);
 
 #ifdef __cplusplus
 }
