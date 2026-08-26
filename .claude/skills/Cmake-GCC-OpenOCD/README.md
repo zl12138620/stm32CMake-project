@@ -7,6 +7,7 @@
 ## 功能
 
 - 从零搭建可复现的 CMake 嵌入式工程（`CMakeLists.txt` + `toolchain.cmake` + 链接脚本 + GCC 启动文件）。
+- **自动识别芯片宏定义**：搭建/修复工程时会先**询问芯片型号**（如 `STM32F103C8T6`），按密度对照表解析出正确的设备宏（`STM32F10X_MD` 等）并写入 `add_compile_definitions`，避免 `#error "Please select first the target..."`。
 - 诊断并修复常见的构建问题：工具链路径、芯片宏、头文件路径、启动文件语法（Keil vs GCC）、旧 CMSIS 汇编约束等。
 - 自动生成 `.elf/.hex/.bin/.map` 固件产物并报告 Flash/RAM 占用。
 - 生成 VS Code `tasks.json` / `launch.json` 调试配置（pyOCD / OpenOCD 双方案）。

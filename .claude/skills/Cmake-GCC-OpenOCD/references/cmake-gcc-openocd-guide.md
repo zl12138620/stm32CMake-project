@@ -77,16 +77,42 @@ endif()
 ```
 注意：正确写法是 `if(BUILD_TYPE_UPPER STREQUAL "RELEASE")`；`elseif()` 空语句是错误写法。
 
-### 6. 芯片宏定义
+### 6. 芯片宏定义（先询问芯片型号，再写宏）
+
 ```cmake
-add_compile_definitions(STM32F10X_MD USE_STDPERIPH_DRIVER)
+# 写在 add_executable 之后，用目标作用域而非全局 add_compile_definitions
+target_compile_definitions(${PROJECT_NAME} PRIVATE STM32F10X_MD USE_STDPERIPH_DRIVER)
 ```
+
 - `STM32F10X_MD`：芯片密度宏（LD/MD/HD/XL），**必须与 stm32f10x.h 匹配**，否则报 `#error "Please select first the target..."`。
 - `USE_STDPERIPH_DRIVER`：启用外设库，让 `stm32f10x.h` 自动包含 `stm32f10x_conf.h`（否则 `assert_param` 未定义）。
+- **作用域最佳实践**：用 `target_compile_definitions(... PRIVATE ...)` 只作用于本目标；全局 `add_compile_definitions()` 会污染所有目标，多目标工程易踩坑。
 
-### 7. 头文件路径
+**自动选择宏的流程（必须执行）：**
+
+1. **先询问用户芯片完整型号**，例如 `STM32F103C8T6`。不要凭猜测或默认值写入宏。
+2. 把型号换算成密度宏并**向用户复述确认**，再写入 `target_compile_definitions`。
+
+型号解读示例（`STM32F103C8T6`）：`103`=主流 F1 系列；`C`=48 引脚；`8`=Flash 64KB（密度关键字母）；`T`=LQFP 封装。密度字母对照：`4`=16KB、`6`=32KB、`8`=64KB、`B`=128KB、`C`=256KB、`D`=384KB、`E`=512KB、`F`=768KB、`G`=1024KB。
+
+**STM32F10x 常见型号速查表：**
+
+| 芯片型号（示例） | 密度 / 产品线 | 设备宏 |
+| --- | --- | --- |
+| STM32F101/102/103x4、x6 | 低密度（16–32KB） | `STM32F10X_LD` |
+| STM32F101/102/103x8、xB（C8T6、CBT6、R8T6、T8U6…） | 中等密度（64–128KB） | `STM32F10X_MD` |
+| STM32F101/103xC、xD、xE（RCT6、RET6、VET6、ZET6…） | 高密度（256–512KB） | `STM32F10X_HD` |
+| STM32F101/103xF、xG | XL 超高密度（512–1024KB） | `STM32F10X_XL` |
+| STM32F105xx、STM32F107xx（R8T6、RBT6、VCT6…） | 互联型 | `STM32F10X_CL` |
+| STM32F100x4、x6 | 值线低密度（16–32KB） | `STM32F10X_LD_VL` |
+| STM32F100x8、xB（C8T6、RBT6…） | 值线中等密度（64–128KB） | `STM32F10X_MD_VL` |
+| STM32F100xC、xD、xE | 值线高密度（256–512KB） | `STM32F10X_HD_VL` |
+
+> 非 F1 系列（F0/F3/F4/F7/H7/L1/L4 等）：询问用户工程使用的 CMSIS 头文件期望的宏（如 `STM32F407xx`、`STM32F0XX`、`USE_HAL_DRIVER`），不要自行编造。
+
+### 7. 头文件路径（写在 add_executable 之后）
 ```cmake
-include_directories(
+target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x   # stm32f10x.h 所在目录
@@ -94,18 +120,20 @@ include_directories(
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/inc
 )
 ```
-漏掉任何一层都会 `fatal error: xxx.h: No such file or directory`。
+- 漏掉任何一层都会 `fatal error: xxx.h: No such file or directory`。
+- **作用域最佳实践**：`target_include_directories(... PRIVATE ...)` 只作用于本目标；`include_directories()` 是目录级全局指令，会让目录下所有目标（含子目录）都继承这些路径，作用域不清晰。
 
 ### 8. 收集源文件
 ```cmake
-file(GLOB SOURCE_FILE
+file(GLOB SOURCE_FILE CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/src/*.c
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport/*.c
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/*.c
     ${CMAKE_CURRENT_LIST_DIR}/User/*.c
 )
 ```
-注意命令是 `file(GLOB ...)`，不是 `GOLB`。新增文件后需重新 `cmake` 配置。
+- 命令是 `file(GLOB ...)`，不是 `GOLB`。
+- **加 `CONFIGURE_DEPENDS`**：Ninja 每次构建会重新检查 glob 目录，新增/删除 `.c` 后自动感知（无需手动重新配置），CMake ≥ 3.12。
 
 ### 9. 输出路径与文件名
 ```cmake
@@ -119,8 +147,8 @@ set(MAP_FILE ${EXECUTABLE_OUTPUT_PATH}/${PROJECT_NAME}.map)
 ### 10. 启动文件与链接脚本
 ```cmake
 if(USE_ARMGCC)
-    SET(STARTUP_FILE ${CMAKE_CURRENT_LIST_DIR}/Startup/startup_stm32f10x_md.s)
-    SET(LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/Startup/STM32F103C8Tx_FLASH.ld)
+    set(STARTUP_FILE ${CMAKE_CURRENT_LIST_DIR}/Startup/startup_stm32f10x_md.s)
+    set(LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/Startup/STM32F103C8Tx_FLASH.ld)
 ```
 
 ### 11. 编译选项
@@ -133,8 +161,10 @@ if(USE_ARMGCC)
         -fno-common
         -fmessage-length=0
     )
+    add_compile_options(-Wall -Wextra)   # 所有构建类型都开警告，提前暴露隐患
 ```
-`-ffunction-sections/-fdata-sections` 配合链接 `-Wl,--gc-sections` 剔除未用代码。
+- `-ffunction-sections/-fdata-sections` 配合链接 `-Wl,--gc-sections` 剔除未用代码。
+- `-Wall -Wextra` 能提前暴露"空循环被优化"、未用变量等问题（例如非 `volatile` 的延时循环在 `-Os` 下会被 GCC 整个删掉）。
 
 ### 12. 链接选项
 ```cmake
@@ -148,14 +178,26 @@ endif()
 ```
 `--print-memory-usage` 会在链接后打印 Flash/RAM 占用。
 
-### 13. 生成目标
+### 13. 生成目标（target_* 指令必须放在这里之后）
 ```cmake
 add_executable(${PROJECT_NAME} ${SOURCE_FILE} ${STARTUP_FILE})
+
+# 芯片宏 + 头文件路径写在 add_executable 之后（见第 6/7 步）
+target_compile_definitions(${PROJECT_NAME} PRIVATE STM32F10X_MD USE_STDPERIPH_DRIVER)
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x
+    ${CMAKE_CURRENT_LIST_DIR}/User
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/inc
+)
+
 set_target_properties(${PROJECT_NAME} PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}
     OUTPUT_NAME ${PROJECT_NAME}.elf
 )
 ```
+- `target_*` 系列指令必须在 `add_executable` 之后调用，否则 CMake 报 "target not created" 错误。
 
 ### 14. POST_BUILD 生成 hex/bin
 ```cmake
@@ -268,6 +310,13 @@ python check_build_env.py                           # 环境诊断
 }
 ```
 
+⚠️ **OpenOCD 配置文件的正确传参方式（重要）：**
+- ✅ 用 `configFiles` 数组传 `*.cfg`，cortex-debug 会为每个文件**自动生成一个 `-f` 参数**，等价于命令行 `openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg`。
+- ❌ **不要**把 `-f` 写进 `serverArgs`（如 `"serverArgs": ["-f", "interface/cmsis-dap.cfg", ...]`）。cortex-debug 不保证 `serverArgs` 中参数与它自动拼接的 `-f`/`-s` 参数之间的顺序，这是**不稳定用法**，可能导致配置加载失败或行为异常。
+- `serverArgs` 只适合传非 `-f` 的附加选项，例如 `"-c", "adapter speed 1000"`。
+- `searchDir` 必须**显式指定**：xPack 版 OpenOCD 是特殊目录布局，脚本位于 `openocd/scripts`，不是标准安装的 `share/openocd/scripts`，cortex-debug **无法自动推断**搜索路径。不设 `searchDir` 会报 `Can't find interface/xxx.cfg`。
+- 若旧配置把 `-f` 写在了 `serverArgs`，请迁移到 `configFiles`。
+
 ### 5. 命令行烧录
 ```bash
 pyocd flash -t stm32f103c8 build/output/TEST.hex --reset
@@ -313,4 +362,5 @@ openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg \
 | `LOAD segment with RWX permissions` | 链接警告，可忽略 |
 | `No probe found` | 调试器未连接，`pyocd list` 检查 |
 | `Target not found` | SWD 接线错误或芯片未供电 |
+| `Can't find interface/cmsis-dap.cfg` | OpenOCD 脚本路径未找到：用 `configFiles` 传 `*.cfg`，并显式设置 `searchDir` 指向 scripts（xPack 为 `openocd/scripts`）；不要在 `serverArgs` 里传 `-f` |
 

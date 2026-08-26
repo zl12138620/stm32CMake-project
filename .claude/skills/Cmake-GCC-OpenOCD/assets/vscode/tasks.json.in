@@ -1,11 +1,12 @@
 {
+    // 本文件是 VS Code 构建任务模板：可直接用 CMake configure_file(@ONLY) 渲染为 .vscode/tasks.json。
+    // @ONLY 模式下 ${workspaceRoot}、$LASTEXITCODE 等会原样保留，只有 @...@ 会被替换。
     "version": "2.0.0",
     "tasks": [
         {
             "label": "build",
             "type": "shell",
-            "command": "cmake",
-            "args": ["--build", "build"],
+            "command": "cmake --preset @CMAKE_PRESET_CONFIG_NAME@; if ($LASTEXITCODE -eq 0) { cmake --build --preset @CMAKE_PRESET_BUILD_NAME@ }",
             "options": {
                 "cwd": "${workspaceRoot}"
             },
