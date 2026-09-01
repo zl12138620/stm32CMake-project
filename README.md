@@ -536,12 +536,12 @@ openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg \
 换一个芯片/工程时，按这份清单核对，基本都能一次编译通过：
 
 - [ ] **工具链**：`toolchain.cmake` 的 `COMPILE_ROOT_PATH` 指向本机实际路径
-- [ ] **芯片宏**：`add_compile_definitions` 中的型号宏（`STM32F10X_HD` 等）与 `.h` 匹配
+- [ ] **芯片宏**：`target_compile_definitions` 中的型号宏（`STM32F10X_HD` 等）与 `.h` 匹配
 - [ ] **启动文件**：`.s` 用 GCC 版，且密度与芯片匹配（md/hd/ld）
 - [ ] **链接脚本**：`.ld` 对应芯片的 Flash/RAM 大小，含 `_sidata/_sdata/_sbss` 等符号
 - [ ] **CPU 内核**：`CPU_CORE`（cortex-m0/m3/m4...）
-- [ ] **头文件路径**：`include_directories` 覆盖所有用到的头文件目录
-- [ ] **源文件**：`file(GLOB)` 路径包含新增的 `.c`
+- [ ] **头文件路径**：`target_include_directories` 覆盖所有用到的头文件目录
+- [ ] **源文件**：`file(GLOB ... CONFIGURE_DEPENDS)` 路径包含新增的 `.c`
 - [ ] **语言**：`project(... C ASM)` 包含 `ASM`
 - [ ] **生成器**：Windows 下用 `cmake -S . -B build -G Ninja`
 - [ ] **调试目标**：launch.json 的 `targetId` / OpenOCD 的 `target/xxx.cfg` 与芯片一致
@@ -565,6 +565,80 @@ openocd -f interface/cmsis-dap.cfg -f target/stm32f1x.cfg \
 | 烧录 `No probe found` | 调试器未连接 / USB 线问题，`pyocd list` 检查 |
 | 烧录 `Target not found` | SWD 接线错误或芯片未供电 |
 | `Can't find interface/cmsis-dap.cfg` | OpenOCD 脚本路径未找到：用 `configFiles` 传 `*.cfg` 并显式 `searchDir` 指向 scripts（xPack 为 `openocd/scripts`）；不要在 `serverArgs` 里传 `-f` |
+
+---
+
+## 十、添加自定义软件驱动库（SoftWare 目录）
+
+工程用 `Libraries/SoftWare/` 集中存放**自己编写的软件驱动**（非官方外设库），目录约定：
+
+```
+Libraries/SoftWare/
+├── inc/            # 库文件（头文件 *.h）
+└── src/            # 源文件（*.c）
+```
+
+新增一个驱动只需 **4 步**，改动两个文件：`CMakeLists.txt` 和 `.vscode/c_cpp_properties.json`。
+
+### 第 1 步：按约定放文件
+
+- 头文件 → `Libraries/SoftWare/inc/`（如 `SoftUSART.h`）
+- 源文件 → `Libraries/SoftWare/src/`（如 `SoftUSART.c`）
+
+### 第 2 步：CMakeLists.txt 登记头文件路径（include）
+
+在 `target_include_directories(${PROJECT_NAME} PRIVATE ...)` 中加入 inc 目录：
+
+```cmake
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ...
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/SoftWare/inc   # ★ 自己的驱动库头文件
+)
+```
+
+### 第 3 步：CMakeLists.txt 收集源文件（GLOB）
+
+在 `file(GLOB SOURCE_FILE CONFIGURE_DEPENDS ...)` 中加入 src 目录：
+
+```cmake
+file(GLOB SOURCE_FILE CONFIGURE_DEPENDS
+    ...
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/SoftWare/src/*.c   # ★ 自己的驱动库源文件
+)
+```
+
+> ⚠️ **GLOB 必须指向 `src/`，不能写成 `inc/*.c`**——否则 `.c` 文件不会被编译，main 里调用时链接报 `undefined reference to SoftXXX_xxx`。本工程已配好 `src/`，以后只新增文件时这一行无需再改。
+
+### 第 4 步：VS Code IntelliSense 加路径（消除红波浪线）
+
+编译能通过但编辑器仍报"无法识别 xxx.h"？更新 `.vscode/c_cpp_properties.json` 的 `includePath`，补上 inc 目录：
+
+```json
+"includePath": [
+    ...
+    "${workspaceFolder}/Libraries/SoftWare/inc"
+]
+```
+
+改完按 `Ctrl+Shift+P` → `C/C++: Reset IntelliSense Database` 重载。
+
+### 第 5 步：重新配置 + 编译
+
+```bash
+cmake --preset ninja          # 重新配置（让 GLOB 生效）
+cmake --build --preset debug  # 编译
+```
+
+> 已开启 `file(GLOB ... CONFIGURE_DEPENDS)`：以后往 `src/` 新增 `.c` 文件，Ninja 增量构建会自动感知，无需每次手动重新配置；但**修改了 CMakeLists.txt 本身**时仍需重新执行一次 `cmake --preset ninja`。
+
+### 常见问题对照
+
+| 现象 | 原因与解决 |
+| --- | --- |
+| `fatal error: SoftXXX.h: No such file` | include 路径没加（第 2 步） |
+| 链接报 `undefined reference to SoftXXX_xxx` | 源文件没被收集，GLOB 指错目录（写了 `inc/` 而非 `src/`，第 3 步） |
+| 编译通过但 VS Code 红波浪线"无法识别" | IntelliSense 路径没加（第 4 步），或未重载 IntelliSense |
+| 新增 `.c` 后没编进固件 | 确认 GLOB 用的是 `src/*.c`；仍无效则重新执行 `cmake --preset ninja` |
 
 
 

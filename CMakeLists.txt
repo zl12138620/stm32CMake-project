@@ -30,11 +30,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 #2、收集源文件（芯片宏和头文件路径改在 add_executable 后用 target_* 指定，作用域更清晰）
 #CONFIGURE_DEPENDS：新增 .c 文件后 Ninja 增量构建自动感知，无需手动重新配置
+#SoftWare：自己的软件驱动库，头文件在 inc/，源文件在 src/
 file(GLOB SOURCE_FILE CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/src/*.c
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/CoreSupport/*.c
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/*.c
     ${CMAKE_CURRENT_LIST_DIR}/User/*.c
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/SoftWare/src/*.c
 )
 #指定生成文件类型
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/output)
@@ -79,6 +81,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/CMSIS/CM3/DeviceSupport/ST/STM32F10x
     ${CMAKE_CURRENT_LIST_DIR}/User
     ${CMAKE_CURRENT_LIST_DIR}/Libraries/STM32F10x_StdPeriph_Driver/inc
+    ${CMAKE_CURRENT_LIST_DIR}/Libraries/SoftWare/inc
 )
 
 set_target_properties(${PROJECT_NAME} PROPERTIES

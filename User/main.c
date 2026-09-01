@@ -15,7 +15,7 @@ int main(void)
 {
     // 1. 开启时钟：GPIOA, AFIO, TIM3
     // 注意：TIM3 挂载在 APB1 总线上
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_AFIO, ENABLE);
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOC | RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
     // 2. 声明结构体变量（放在函数开头，防止 C89 编译器报错）
@@ -27,9 +27,9 @@ int main(void)
 
     // 3. 配置 PA5 (按键)：上拉输入
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;  
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    GPIO_Init(GPIOC, &GPIO_InitStructure);
 
     // 4. 配置 PA6 (LED - TIM3_CH1)：复用推挽输出
     // 【关键】使用 PWM 时，引脚必须配置为复用推挽输出，不能是普通推挽
